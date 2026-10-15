@@ -9,11 +9,11 @@ import type {
 } from 'claude-code';
 
 import { compact, reductionRatio, resolveOptions } from '../src/compact.js';
-import { buildJevRequest, DEFAULT_MODEL, parseJevResponse } from '../src/request.js';
+import { buildKevRequest, DEFAULT_MODEL, parseKevResponse } from '../src/request.js';
 import type {
   CompactOptions,
   CompactResult,
-  JevAsker,
+  KevAsker,
   Message,
   ToolResult,
   ToolUse,
@@ -42,7 +42,7 @@ export type HookFetch = (url: string, init?: HookFetchInit) => Promise<HookFetch
 
 export type HookConfig = CompactOptions & {
   apiKey?: string;
-  /** Full System One URL of a Jev-compatible server (e.g. a Kev endpoint); unset means TypeSafe. */
+  /** Full URL of your Kev endpoint (https://<workspace>--kev-api.modal.run/v1/systemone). Required. */
   baseUrl?: string;
   compactAtPercent: number;
   minReductionRatio: number;
@@ -91,22 +91,22 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
   return config;
 }
 
-/** A `JevAsker` over the engine's `$.http.fetch`. */
-export function jevAsker(
+/** A `KevAsker` over the engine's `$.http.fetch`. */
+export function kevAsker(
   fetchFn: HookFetch,
   apiKey: string,
   model: string,
-  baseUrl?: string,
-): JevAsker {
+  baseUrl: string,
+): KevAsker {
   return {
     async ask(state, questions) {
-      const request = buildJevRequest({ apiKey, model, baseUrl }, state, questions);
+      const request = buildKevRequest({ apiKey, model, baseUrl }, state, questions);
       const response = await fetchFn(request.url, {
         method: request.method,
         headers: request.headers,
         body: request.body,
       });
-      return parseJevResponse(response.status, response.ok, response.text);
+      return parseKevResponse(response.status, response.ok, response.text);
     },
   };
 }
@@ -170,16 +170,17 @@ export type SessionCompaction = {
   messages: SessionMessage[];
 };
 
-/** Runs the library over a session transcript; throws when the key is missing or Jev fails. */
+/** Runs the library over a session transcript; throws when the key is missing or Kev fails. */
 export async function compactSession(
   messages: readonly SessionMessage[],
   config: HookConfig,
   fetchFn: HookFetch,
 ): Promise<SessionCompaction> {
-  if (!config.apiKey) throw new Error('no API key: set the apiKey plugin option (or TYPESAFE_API_KEY / KEV_API_KEY)');
+  if (!config.baseUrl) throw new Error('no Kev endpoint: set the baseUrl plugin option');
+  if (!config.apiKey) throw new Error('no API key: set the apiKey plugin option (or the KEV_API_KEY environment variable)');
   const result = await compact(
     messages,
-    jevAsker(fetchFn, config.apiKey, config.model, config.baseUrl),
+    kevAsker(fetchFn, config.apiKey, config.model, config.baseUrl),
     config,
   );
   return { result, messages: toSessionMessages(messages, result.messages) };
@@ -199,7 +200,7 @@ export async function warmUp(
   sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   onTry?: (attempt: number, total: number) => void,
 ): Promise<void> {
-  if (!config.baseUrl) return;
+  if (!config.baseUrl) throw new Error('no Kev endpoint: set the baseUrl plugin option');
   const url = config.baseUrl.replace(/\/v1\/systemone\/?$/, '/v1/models');
   const total = 6;
   for (let attempt = 0; attempt < total; attempt++) {
@@ -269,24 +270,10 @@ export function decisionLogLines(
 }
 
 export async function getApiKey(
-  $: {
-    env: { get: (name: string) => Promise<string | undefined> };
-    settings: { read: () => Promise<Readonly<Record<string, unknown>>> };
-  },
+  $: { env: { get: (name: string) => Promise<string | undefined> } },
   config: HookConfig,
 ): Promise<string | undefined> {
-  if (config.apiKey) return config.apiKey;
-  // A custom server (Kev) gets only its own key, never the TypeSafe one.
-  if (config.baseUrl) return (await $.env.get('KEV_API_KEY')) || undefined;
-  const fromEnv = await $.env.get('TYPESAFE_API_KEY');
-  if (fromEnv) return fromEnv;
-  const settings = await $.settings.read();
-  const env = settings['env'];
-  if (env && typeof env === 'object') {
-    const value = (env as Record<string, unknown>)['TYPESAFE_API_KEY'];
-    if (typeof value === 'string' && value) return value;
-  }
-  return undefined;
+  return config.apiKey || (await $.env.get('KEV_API_KEY')) || undefined;
 }
 
 function notify(
@@ -434,26 +421,23 @@ async function startKevCompaction($: KevEngine, configured: HookConfig): Promise
   const started = Date.now();
   try {
     const config = { ...configured, apiKey: await getApiKey($, configured) };
-    let wokeMs = 0;
-    if (config.baseUrl) {
-      notify(
-        $,
-        'Kev compaction 1/3: waking the Kev server. A cold start takes 1 to 5 minutes, a warm one a few seconds. I will post updates.',
+    if (!config.baseUrl) throw new Error('no Kev endpoint: set the baseUrl plugin option');
+    notify(
+      $,
+      'Kev compaction 1/3: waking the Kev server. A cold start takes 1 to 5 minutes, a warm one a few seconds. I will post updates.',
+    );
+    const stopBeat = heartbeat($, started);
+    try {
+      await warmUp(hookFetch($), config, undefined, (attempt, total) =>
+        notify($, `Kev compaction 1/3: still waiting for the server, checking again (check ${attempt} of ${total}; this is normal during a cold start)`),
       );
-      const stopBeat = heartbeat($, started);
-      try {
-        await warmUp(hookFetch($), config, undefined, (attempt, total) =>
-          notify($, `Kev compaction 1/3: still waiting for the server, checking again (check ${attempt} of ${total}; this is normal during a cold start)`),
-        );
-      } finally {
-        stopBeat();
-      }
-      wokeMs = Date.now() - started;
+    } finally {
+      stopBeat();
     }
     armedUntil = Date.now() + ARM_MS;
     notify(
       $,
-      `Kev compaction 2/3: the Kev server is up${config.baseUrl ? ` (took ${formatDuration(wokeMs)})` : ''}. Handing your conversation to Kev to score.`,
+      `Kev compaction 2/3: the Kev server is up (took ${formatDuration(Date.now() - started)}). Handing your conversation to Kev to score.`,
     );
     try {
       await runCompaction($);
@@ -495,7 +479,7 @@ export const register: Register = (on: On, options: PluginOptions) => {
 
   on('session.start', ($, event, next) =>
     $.command
-      .register({ name: 'kevcompact', description: 'Compact with Kev/Jev: keep messages verbatim, drop tool output no longer needed' })
+      .register({ name: 'kevcompact', description: 'Compact with Kev/Kev: keep messages verbatim, drop tool output no longer needed' })
       .then(() => next(event)),
   );
 

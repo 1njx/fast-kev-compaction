@@ -6,8 +6,8 @@ import type {
   CompactOptions,
   CompactResult,
   CompactionState,
-  JevAsker,
-  JevQuestions,
+  KevAsker,
+  KevQuestions,
   Message,
   ResolvedCompactOptions,
   ToolCall,
@@ -53,7 +53,7 @@ export function resolveOptions(options: CompactOptions = {}): ResolvedCompactOpt
 }
 
 /** The two `noul` questions asked about one call: keep the call, keep its result. */
-export function questionsFor(call: ToolCall): JevQuestions {
+export function questionsFor(call: ToolCall): KevQuestions {
   return {
     [`call_${call.id}`]: {
       type: 'noul',
@@ -115,11 +115,11 @@ export function decideCall(
 }
 
 async function askBatch(
-  asker: JevAsker,
+  asker: KevAsker,
   state: CompactionState,
   batch: readonly ToolCall[],
 ): Promise<Map<string, CallAnswer>> {
-  const questions: JevQuestions = Object.assign({}, ...batch.map(questionsFor));
+  const questions: KevQuestions = Object.assign({}, ...batch.map(questionsFor));
   const { answers } = await asker.ask(state, questions);
   return new Map(
     batch.map((call) => [
@@ -135,7 +135,7 @@ async function askBatch(
 function truncatedResultText(text: string, isError: boolean, headChars: number): string {
   if (text.length <= headChars + 120) return text;
   const head = headChars > 0 ? `${text.slice(0, headChars)}\n` : '';
-  return `${head}[fast-jev-compaction truncated ${text.length - headChars} chars of this tool result${
+  return `${head}[fast-kev-compaction truncated ${text.length - headChars} chars of this tool result${
     isError ? ' (error)' : ''
   }; re-run the tool if needed]`;
 }
@@ -248,15 +248,15 @@ function count(decisions: readonly CallDecision[], reason: CallDecision['reason'
 }
 
 /**
- * Compacts a transcript by asking Jev, for every tool call outside the pinned
+ * Compacts a transcript by asking Kev, for every tool call outside the pinned
  * first and newest messages, whether the call and whether its result must
  * stay. The whole history (results omitted, fitted into `maxStateTokens`) is
- * sent as state with every batch of questions. Throws when Jev fails or the
+ * sent as state with every batch of questions. Throws when Kev fails or the
  * history cannot be fitted; the caller decides whether to fall back.
  */
 export async function compact(
   messages: readonly Message[],
-  asker: JevAsker,
+  asker: KevAsker,
   options: CompactOptions = {},
 ): Promise<CompactResult> {
   const started = Date.now();

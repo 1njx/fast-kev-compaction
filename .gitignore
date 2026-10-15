@@ -1,6 +1,5 @@
 node_modules
 dist
 .env
-demo/JevDemo/build
 .kev-modal-key
 *.log

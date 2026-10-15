@@ -1,26 +1,21 @@
-## fast-jev-compaction 0.5.0: Kev support and `/kevcompact`
+## 0.6.0: Kev only
 
-Run the context-compaction scoring on **your own open model** ([Kev](https://github.com/jaredpalmer/kev), hosted on Modal's free tier) instead of TypeSafe's hosted Jev. Your messages stay word for word; only stale tool calls and outputs are dropped.
+This fork now does one thing: score Claude Code compaction with **your own Kev model** on Modal's free tier. Your messages stay word for word; only stale tool calls and outputs are dropped. Use `/kevcompact` in the desktop app or the CLI.
 
-### What's new
-- **`/kevcompact`**: wakes your Kev server, compacts the conversation, and tells you in plain English what happened.
-- **Works in the Claude desktop app and the Claude Code CLI.**
-- **Readable progress**: 1/3 waking the server (with a "still waking" note every 30 s), 2/3 server up, 3/3 scoring.
-- **A clear result**: how many messages were kept, how much smaller the chat got, what was dropped and how long it took. If it fell back or failed, it says why and what to check, and your conversation is never left half-changed.
-- **`baseUrl` option** to point the plugin at any Jev-compatible server, plus `deploy/kev_serve.py` (Kev on Modal, idles off after 60 s).
+### Breaking changes
+- Everything TypeSafe/Jev is gone from the code and docs. There is no default endpoint: set `baseUrl` to your Kev endpoint.
+- Renamed to **fast-kev-compaction**: install with `claude plugin install fast-kev-compaction@fast-kev-compaction`.
+- Library exports are `Kev*` (`KevClient`, `KevAsker`, `buildKevRequest`, ...), the default model is `kev-latest`, and the key comes from the `apiKey` option or `KEV_API_KEY`.
+- Removed the macOS animated demo.
 
-### Fixes
-- The TypeSafe API key is never sent to a custom (Kev) server.
-- Auto-compaction at `compactAtPercent` no longer re-fires every turn (10-minute cooldown).
-- A server that never wakes now reports an error instead of carrying on.
-- Subagent compactions stay on Claude Code's built-in summary.
+### Upgrading from 0.5.x
+Uninstall `fast-jev-compaction`, install `fast-kev-compaction`, and enter your `baseUrl`, `apiKey` and `model` again.
 
 ### Setup
-See [Use Kev instead of Jev](README.md#use-kev-instead-of-jev) and [deploy/README.md](deploy/README.md).
+[Manual setup](https://github.com/1njx/fast-kev-compaction/blob/main/docs/MANUAL_SETUP.md), or paste [docs/AGENT_PROMPT.md](https://github.com/1njx/fast-kev-compaction/blob/main/docs/AGENT_PROMPT.md) into your own AI agent.
 
 ### Notes
 - Function hooks are an early-access Claude Code feature: set `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` and restart.
-- A cold GPU takes 1 to 5 minutes to wake; each cold start costs roughly $0.35 of B200 time. Set a $0 spend limit in Modal.
-- The interactive CLI path is written but was tested only in headless (`claude -p`) mode, which is what the desktop app uses.
+- A cold GPU takes 1 to 5 minutes to wake; each cold start costs roughly $0.25 to $0.40 of GPU time. Set a $0 spend limit in Modal.
 
-Credit: this is a fork of [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) by Tamara Tran (MIT). The compaction library and hooks are theirs; Kev is [jaredpalmer/kev](https://github.com/jaredpalmer/kev). Full credits are in the README.
+Credit: a fork of [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) by Tamara Tran (MIT). The compaction library and hooks are theirs; Kev is [jaredpalmer/kev](https://github.com/jaredpalmer/kev).

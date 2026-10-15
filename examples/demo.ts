@@ -1,3 +1,4 @@
+// Live check against your Kev endpoint: KEV_BASE_URL=https://<workspace>--kev-api.modal.run/v1/systemone KEV_API_KEY=... npm run demo
 import { compactMessages, reductionRatio, type Message } from '../src/index.js';
 
 let n = 0;

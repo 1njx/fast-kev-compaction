@@ -30,7 +30,7 @@ Your messages are never summarized or reworded. A normal `/compact` is unchanged
 | Disk and time | The first start downloads about 51 GB of model weights **to Modal**, not to your computer. |
 | Git | Only to clone this repo for `deploy/kev_serve.py`. |
 
-Plugins and hooks run on your machine with your permissions. Read `hooks/fast-jev.ts` if you want to see exactly what it does (it talks only to the server you configure).
+Plugins and hooks run on your machine with your permissions. Read `hooks/fast-kev.ts` if you want to see exactly what it does (it talks only to the server you configure).
 
 ## Step 1: Modal account, payment method and spend limit
 
@@ -95,7 +95,7 @@ You want HTTP 200. The same request **without** the header must return 401. If y
 
 ```sh
 claude plugin marketplace add 1njx/fast-kev-compaction
-claude plugin install fast-jev-compaction@fast-jev-compaction
+claude plugin install fast-kev-compaction@fast-kev-compaction
 ```
 
 The install can prompt for the options below. The CLI and the desktop app share `~/.claude`, so a plugin installed from the CLI is available in both after a restart.
@@ -114,11 +114,11 @@ Easiest from a terminal: put the values in a file, feed it in, and delete the fi
 cat > values.json <<'EOF'
 { "baseUrl": "https://<workspace>--kev-api.modal.run/v1/systemone", "model": "kev-latest", "apiKey": "<your key>" }
 EOF
-claude plugin configure fast-jev-compaction@fast-jev-compaction --values-stdin < values.json
+claude plugin configure fast-kev-compaction@fast-kev-compaction --values-stdin < values.json
 rm values.json
 ```
 
-(The values are single-line strings in one JSON object. If PowerShell's pipe is rejected, use Git Bash for this one command or answer the install prompts instead.) Run `claude plugin configure fast-jev-compaction@fast-jev-compaction` with no flags to see which options are set.
+(The values are single-line strings in one JSON object. If PowerShell's pipe is rejected, use Git Bash for this one command or answer the install prompts instead.) Run `claude plugin configure fast-kev-compaction@fast-kev-compaction` with no flags to see which options are set.
 
 Optional tuning: `keepThreshold` (default 0.5), `preserveRecentMessages` (6), `compactAtPercent` (60), `minReductionRatio` (0.25). See [hooks/README.md](../hooks/README.md).
 
@@ -137,7 +137,7 @@ If the file already has an `"env"` object, add the line inside it. Make sure the
 ## Step 9: Restart and try it
 
 1. **Fully quit** Claude (desktop app: also the tray icon) and reopen it. Hooks and plugin options load at startup only.
-2. `claude plugin list` should show `fast-jev-compaction` enabled.
+2. `claude plugin list` should show `fast-kev-compaction` enabled.
 3. Open a chat and make Claude read a few files so there is something to compact.
 4. Type `/kevcompact`. If it is missing from the slash menu, see Troubleshooting.
 
@@ -154,10 +154,10 @@ A short chat can end with *"found little it could safely drop. Claude's normal s
 
 - `/kevcompact` compacts with Kev. A plain `/compact` stays the built-in summary.
 - At 60% context the plugin starts the same flow on its own, at most once every 10 minutes.
-- Update: `claude plugin marketplace update fast-jev-compaction` then `claude plugin update fast-jev-compaction@fast-jev-compaction`, and restart.
+- Update: `claude plugin marketplace update fast-kev-compaction` then `claude plugin update fast-kev-compaction@fast-kev-compaction`, and restart.
 - Stop the server: `modal app stop kev`. Redeploy with the same key to bring it back.
 - Rotate the key: redeploy with a new `KEV_API_KEY`, then rerun Step 7 with the new key.
-- Uninstall: `claude plugin uninstall fast-jev-compaction@fast-jev-compaction`, remove the env line if you added it only for this, and `modal app stop kev`.
+- Uninstall: `claude plugin uninstall fast-kev-compaction@fast-kev-compaction`, remove the env line if you added it only for this, and `modal app stop kev`.
 
 ## Troubleshooting
 
@@ -177,7 +177,7 @@ A short chat can end with *"found little it could safely drop. Claude's normal s
 ## Safety notes
 
 - The endpoint is protected only by its URL and key. Treat the key like a password.
-- The plugin never sends your TypeSafe key to a custom server, and sends the conversation only to the `baseUrl` you set.
+- The plugin sends the conversation only to the `baseUrl` you set.
 - Compaction sends your conversation (with tool outputs shortened) to **your** Modal server, not to a third party.
 - Keep the $0 spend limit on unless you want to pay for more usage.
 

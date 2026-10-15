@@ -1,24 +1,24 @@
 {
-  "name": "fast-jev-compaction",
-  "version": "0.5.0",
-  "description": "Verbatim Jev-guided compaction for Claude Code sessions.",
+  "name": "fast-kev-compaction",
+  "version": "0.6.0",
+  "description": "Verbatim Kev-guided compaction for Claude Code sessions.",
   "license": "MIT",
   "userConfig": {
     "apiKey": {
       "type": "string",
-      "title": "TypeSafe API key",
-      "description": "TypeSafe API key. Leave unset to use TYPESAFE_API_KEY.",
+      "title": "Kev API key",
+      "description": "Bearer key of your Kev endpoint (the KEV_API_KEY you deployed with). Leave unset to use the KEV_API_KEY environment variable.",
       "sensitive": true
     },
     "baseUrl": {
       "type": "string",
-      "title": "System One URL",
-      "description": "Full URL of a Jev-compatible endpoint, e.g. https://<workspace>--kev-api.modal.run/v1/systemone for Kev. Leave unset to use TypeSafe; apiKey is then that server's bearer key."
+      "title": "Kev endpoint URL",
+      "description": "Required. Full URL of your Kev endpoint, e.g. https://<workspace>--kev-api.modal.run/v1/systemone."
     },
     "keepThreshold": {
       "type": "number",
       "title": "Keep threshold",
-      "description": "Minimum Jev probability that a tool call or tool result is still needed; below it the item is removed.",
+      "description": "Minimum Kev probability that a tool call or tool result is still needed; below it the item is removed.",
       "default": 0.5
     },
     "preserveRecentMessages": {
@@ -41,27 +41,27 @@
     },
     "maxStateTokens": {
       "type": "number",
-      "title": "Maximum Jev state tokens",
-      "description": "Estimated token budget for the conversation state sent with every Jev request.",
+      "title": "Maximum Kev state tokens",
+      "description": "Estimated token budget for the conversation state sent with every Kev request.",
       "default": 25000
     },
     "maxRequestTokens": {
       "type": "number",
-      "title": "Maximum Jev request tokens",
-      "description": "Estimated token budget for state plus questions in one Jev request.",
+      "title": "Maximum Kev request tokens",
+      "description": "Estimated token budget for state plus questions in one Kev request.",
       "default": 30000
     },
     "truncateHeadChars": {
       "type": "number",
       "title": "Truncated tool result head",
-      "description": "Characters of a tool result kept when Jev decides its full output is no longer needed; 0 keeps only the note.",
+      "description": "Characters of a tool result kept when Kev decides its full output is no longer needed; 0 keeps only the note.",
       "default": 300
     },
     "model": {
       "type": "string",
-      "title": "Jev model",
-      "description": "TypeSafe Jev model name.",
-      "default": "jev-latest"
+      "title": "Kev model",
+      "description": "Kev model name served by your endpoint.",
+      "default": "kev-latest"
     }
   }
 }

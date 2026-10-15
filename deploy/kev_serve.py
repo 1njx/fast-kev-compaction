@@ -1,5 +1,4 @@
-"""Your own Kev endpoint on Modal: one file, one command. Speaks TypeSafe's System One protocol (POST /v1/systemone,
-GET /v1/models), so existing Jev / TypeSafe clients only change their base URL.
+"""Your own Kev endpoint on Modal: one file, one command. Serves POST /v1/systemone and GET /v1/models.
 
     pip install modal==1.5.5 && modal setup                            # once: sign in to Modal (opens a browser)
     modal deploy kev_serve.py                                          # Kev-4B on an L40S -> https://<workspace>--kev-api.modal.run

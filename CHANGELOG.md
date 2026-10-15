@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 (Kev only)
+
+- **Breaking:** this fork now supports Kev only. The package and plugin are renamed to `fast-kev-compaction`
+  (`claude plugin install fast-kev-compaction@fast-kev-compaction`), the library exports are `Kev*` instead of
+  `Jev*`, the default model is `kev-latest`, the key comes from the `apiKey` option or `KEV_API_KEY`, and `baseUrl`
+  is required. There is no TypeSafe default endpoint any more.
+- Removed the macOS animated demo.
+- Migrating from 0.5.x: uninstall `fast-jev-compaction`, install `fast-kev-compaction`, and enter the same
+  `baseUrl`, `apiKey` and `model` again.
+
 ## 0.5.0
 
 - `/kevcompact` also works in the interactive Claude Code CLI: it calls `$.session.compact()` there and falls

@@ -12,7 +12,7 @@ import {
   summarize,
   warmUp,
   toSessionMessages,
-} from '../hooks/fast-jev.ts';
+} from '../hooks/fast-kev.ts';
 import { applyDecisions, collectToolCalls, decideCall, type Message } from '../src/index.js';
 
 type SessionMessage = Message & { handle?: string };
@@ -46,7 +46,7 @@ function transcript(): SessionMessage[] {
   ];
 }
 
-function jevFetch(answer: (name: string) => number, bodies: string[] = []) {
+function kevFetch(answer: (name: string) => number, bodies: string[] = []) {
   return async (_url: string, init?: { body?: string }) => {
     bodies.push(init?.body ?? '');
     const { questions } = JSON.parse(init?.body ?? '{}') as { questions: Record<string, unknown> };
@@ -59,14 +59,14 @@ function jevFetch(answer: (name: string) => number, bodies: string[] = []) {
 
 describe('hook config', () => {
   it('reads userConfig values and falls back to defaults', () => {
-    expect(resolveHookConfig({})).toEqual({ compactAtPercent: 60, minReductionRatio: 0.25, model: 'jev-latest' });
+    expect(resolveHookConfig({})).toEqual({ compactAtPercent: 60, minReductionRatio: 0.25, model: 'kev-latest' });
     expect(
-      resolveHookConfig({ apiKey: 'k', keepThreshold: 0.3, maxStateTokens: 1000, model: 'jev-x', goal: 'g', compactAtPercent: 'no' }),
+      resolveHookConfig({ apiKey: 'k', keepThreshold: 0.3, maxStateTokens: 1000, model: 'kev-x', goal: 'g', compactAtPercent: 'no' }),
     ).toEqual({
       apiKey: 'k',
       keepThreshold: 0.3,
       maxStateTokens: 1000,
-      model: 'jev-x',
+      model: 'kev-x',
       goal: 'g',
       compactAtPercent: 60,
       minReductionRatio: 0.25,
@@ -89,11 +89,11 @@ describe('session message mapping', () => {
     expect(out[0]).toBe(messages[0]);
     expect(out[1]?.handle).toBeUndefined();
     expect(out[1]?.toolUses[0]?.text).toMatch(
-      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-jev-compaction truncated 1700 chars`),
+      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-kev-compaction truncated 1700 chars`),
     );
     expect(out[2]?.handle).toBeUndefined();
     expect(out[2]?.toolResults?.[0]?.text).toMatch(
-      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-jev-compaction truncated 1700 chars`),
+      new RegExp(`^${'x'.repeat(300)}\\n\\[fast-kev-compaction truncated 1700 chars`),
     );
     expect(out[2]?.toolResults?.[0]).toMatchObject({ tool_use_id: 'tool-1', isError: false });
     expect(out[3]).toBe(messages[3]);
@@ -118,14 +118,14 @@ describe('session message mapping', () => {
 describe('compactSession', () => {
   it('runs the library over the engine fetch and reports the outcome', async () => {
     const bodies: string[] = [];
-    const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k', model: 'jev-x' };
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1, baseUrl: 'https://kev.example/v1/systemone' }), apiKey: 'k', model: 'kev-x' };
     const { result: output, messages } = await compactSession(
       transcript(),
       config,
-      jevFetch((name) => (name === 'call_t2' || name === 'result_t2' ? 0.9 : 0.1), bodies),
+      kevFetch((name) => (name === 'call_t2' || name === 'result_t2' ? 0.9 : 0.1), bodies),
     );
     expect(bodies).toHaveLength(1);
-    expect(JSON.parse(bodies[0]!).model).toBe('jev-x');
+    expect(JSON.parse(bodies[0]!).model).toBe('kev-x');
     expect(output.decisions.map((d) => d.action)).toEqual(['drop_call', 'keep']);
     expect(messages.map((m) => m.handle)).toEqual(['h-0', 'h-tool-2', 'r-tool-2', 'h-5', 'h-6']);
     expect(summarize(output)).toMatch(/^\d+% reduction; 1 kept, 1 call_dropped; state ~\d+ tokens \(full\) in 1 request\(s\)$/);
@@ -133,25 +133,21 @@ describe('compactSession', () => {
     expect(decisionLogLines(output)).toEqual([`decisions: ${decisionLog(output)}`]);
   });
 
-  it('sends requests to the configured baseUrl, TypeSafe otherwise', async () => {
+  it('sends requests to the configured baseUrl and refuses to run without one', async () => {
     const urls: string[] = [];
     const fetchFn = async (url: string, init?: { body?: string }) => {
       urls.push(url);
-      return jevFetch(() => 0.1)(url, init);
+      return kevFetch(() => 0.1)(url, init);
     };
     const options = { preserveRecentMessages: 1, apiKey: 'k' };
-    await compactSession(transcript(), resolveHookConfig(options), fetchFn);
-    await compactSession(
-      transcript(),
-      resolveHookConfig({ ...options, baseUrl: 'https://kev.example/v1/systemone' }),
-      fetchFn,
-    );
-    expect(urls).toEqual(['https://api.typesafe.ai/v1/systemone', 'https://kev.example/v1/systemone']);
+    await compactSession(transcript(), resolveHookConfig({ ...options, baseUrl: 'https://kev.example/v1/systemone' }), fetchFn);
+    expect(urls).toEqual(['https://kev.example/v1/systemone']);
+    await expect(compactSession(transcript(), resolveHookConfig(options), fetchFn)).rejects.toThrow(/baseUrl/);
   });
 
   it('splits a long decision log into ui.log lines under the host limit', async () => {
-    const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
-    const { result: output } = await compactSession(transcript(), config, jevFetch(() => 0.1));
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1, baseUrl: 'https://kev.example/v1/systemone' }), apiKey: 'k' };
+    const { result: output } = await compactSession(transcript(), config, kevFetch(() => 0.1));
     const lines = decisionLogLines(output, 60);
     expect(lines).toEqual([
       'decisions (1/2): t1:Read:drop_call/call=0.10/result=0.10',
@@ -162,8 +158,8 @@ describe('compactSession', () => {
   });
 
   it('throws on a missing key and on failed requests so the hook falls back', async () => {
-    const config = resolveHookConfig({ preserveRecentMessages: 1 });
-    await expect(compactSession(transcript(), config, jevFetch(() => 0))).rejects.toThrow(/TYPESAFE_API_KEY/);
+    const config = resolveHookConfig({ preserveRecentMessages: 1, baseUrl: 'https://kev.example/v1/systemone' });
+    await expect(compactSession(transcript(), config, kevFetch(() => 0))).rejects.toThrow(/KEV_API_KEY/);
     await expect(
       compactSession(transcript(), { ...config, apiKey: 'k' }, async () => ({ status: 500, ok: false, text: 'x' })),
     ).rejects.toThrow(/500/);
@@ -188,9 +184,11 @@ describe('warmUp', () => {
     expect(urls).toEqual(Array(3).fill('https://x.modal.run/v1/models'));
   });
 
-  it('stops at once on a rejected key and skips servers without a baseUrl', async () => {
+  it('stops at once on a rejected key and needs a baseUrl', async () => {
     await expect(warmUp(async () => ({ status: 401, ok: false, text: '' }), config, noSleep)).rejects.toThrow(/rejected/);
-    await warmUp(async () => { throw new Error('unused'); }, { ...config, baseUrl: undefined }, noSleep);
+    await expect(
+      warmUp(async () => { throw new Error('unused'); }, { ...config, baseUrl: undefined }, noSleep),
+    ).rejects.toThrow(/baseUrl/);
   });
 });
 
@@ -203,13 +201,11 @@ describe('warmUp failure and key selection', () => {
     ).rejects.toThrow(/did not wake/);
   });
 
-  it('never sends the TypeSafe key to a custom server', async () => {
-    const engine = {
-      env: { get: async (name: string) => (name === 'TYPESAFE_API_KEY' ? 'typesafe-secret' : undefined) },
-      settings: { read: async () => ({}) },
-    };
-    expect(await getApiKey(engine, resolveHookConfig({ baseUrl: 'https://x.modal.run/v1/systemone' }))).toBeUndefined();
-    expect(await getApiKey(engine, resolveHookConfig({}))).toBe('typesafe-secret');
+  it('takes the key from the option first, then KEV_API_KEY', async () => {
+    const engine = { env: { get: async (name: string) => (name === 'KEV_API_KEY' ? 'env-key' : undefined) } };
+    expect(await getApiKey(engine, resolveHookConfig({ apiKey: 'option-key' }))).toBe('option-key');
+    expect(await getApiKey(engine, resolveHookConfig({}))).toBe('env-key');
+    expect(await getApiKey({ env: { get: async () => undefined } }, resolveHookConfig({}))).toBeUndefined();
   });
 });
 
@@ -222,8 +218,8 @@ describe('readable reports', () => {
   });
 
   it('explains a successful compaction in plain English', async () => {
-    const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
-    const { result } = await compactSession(transcript(), config, jevFetch(() => 0.1));
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1, baseUrl: 'https://kev.example/v1/systemone' }), apiKey: 'k' };
+    const { result } = await compactSession(transcript(), config, kevFetch(() => 0.1));
     const text = explainWorked(result, 600);
     expect(text).toMatch(/^It worked\. Kev kept \d+ of \d+ messages/);
     expect(text).toMatch(/removed 2 tool calls that no longer mattered/);
@@ -233,7 +229,7 @@ describe('readable reports', () => {
   });
 
   it('turns raw errors into what to check', () => {
-    expect(friendlyError('Jev request failed: 401 Unauthorized')).toMatch(/rejected the API key/);
+    expect(friendlyError('Kev request failed: 401 Unauthorized')).toMatch(/rejected the API key/);
     expect(friendlyError('endpoint rejected the key (401)')).toMatch(/rejected the API key/);
     expect(friendlyError('the Kev server did not wake up')).toMatch(/modal\.com\/apps/);
     expect(friendlyError('HTTP 503')).toMatch(/too slow or errored/);

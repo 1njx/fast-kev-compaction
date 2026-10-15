@@ -1,7 +1,7 @@
 {
-  "name": "fast-jev-compaction",
+  "name": "fast-kev-compaction",
   "version": "0.2.0",
-  "description": "Continuous, verbatim context compaction for LLM agents using TypeSafe's Jev model.",
+  "description": "Continuous, verbatim context compaction for LLM agents, scored by a self-hosted Kev model.",
   "type": "module",
   "license": "MIT",
   "engines": {
