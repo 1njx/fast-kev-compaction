@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="assets/banner.svg" alt="A conversation before and after Kev compaction: stale tool calls and outputs are removed, everything else is kept word for word" width="100%">
-</p>
+<h1 align="center">fast-kev-compaction</h1>
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue"></a>
