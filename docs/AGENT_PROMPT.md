@@ -1,4 +1,4 @@
-You are setting up the "fast-kev-compaction" Claude Code plugin for me, with my own Kev scoring server on Modal. The project is https://github.com/1njx/fast-kev-compaction. Read its README section "Use Kev instead of Kev" and docs/MANUAL_SETUP.md first, then do the setup step by step on my computer. Tell me briefly what you are doing before each step and check that it worked before the next one.
+You are setting up the "fast-kev-compaction" Claude Code plugin for me, with my own Kev scoring server on Modal. The project is https://github.com/1njx/fast-kev-compaction. Read its README (Quick start) and docs/MANUAL_SETUP.md first, then do the setup step by step on my computer. Tell me briefly what you are doing before each step and check that it worked before the next one.
 
 Rules you must follow:
 - Ask me before anything that costs money, signs me in to an account, or needs a browser approval. Never create accounts, and never enter my passwords or payment details. Tell me exactly what to click and wait for me.

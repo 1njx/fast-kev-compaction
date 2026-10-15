@@ -1,10 +1,15 @@
 # Changelog
 
-## 0.6.1
+## 0.6.2
 
-- Automatic compaction is now off by default (`compactAtPercent` 0). Before, long sessions started a Kev compaction
-  and a visible `/compact` on their own once the context passed 60%. Set `compactAtPercent` to turn it back on; its
-  toasts now say they are automatic and show the context percentage.
+- Fix: long conversations now work. A big history needs many scoring requests; they were all sent at once, queued
+  on the GPU and hit Claude Code's 30-second per-request limit, so Kev fell back to the normal summary. Requests now
+  go out two at a time (`requestConcurrency`) and a timed-out request is retried (`requestRetries`). Tested on a
+  883-message conversation against a live server: it finished in about a minute with no timeouts, where sending all
+  requests at once failed.
+- Automatic compaction is off by default (`compactAtPercent` 0). Before, long sessions started a Kev compaction and a
+  visible `/compact` on their own once the context passed 60%. Set `compactAtPercent` to turn it back on; its toasts
+  say they are automatic and show the context percentage.
 
 ## 0.6.0 (Kev only)
 

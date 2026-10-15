@@ -21,6 +21,8 @@ export const DEFAULT_OPTIONS: ResolvedCompactOptions = {
   maxStateTokens: 25_000,
   maxRequestTokens: 30_000,
   truncateHeadChars: 300,
+  requestConcurrency: 2,
+  requestRetries: 2,
 };
 
 /** Tokens the request envelope (`model`, key names) adds around state and questions. */
@@ -48,6 +50,14 @@ export function resolveOptions(options: CompactOptions = {}): ResolvedCompactOpt
     truncateHeadChars: Math.max(
       0,
       Math.floor(finite(options.truncateHeadChars, DEFAULT_OPTIONS.truncateHeadChars)),
+    ),
+    requestConcurrency: Math.max(
+      1,
+      Math.floor(finite(options.requestConcurrency, DEFAULT_OPTIONS.requestConcurrency)),
+    ),
+    requestRetries: Math.max(
+      0,
+      Math.floor(finite(options.requestRetries, DEFAULT_OPTIONS.requestRetries)),
     ),
   };
 }
@@ -114,13 +124,46 @@ export function decideCall(
   return { ...base, action: 'drop_call', reason: 'call_dropped' };
 }
 
+/** A 4xx answer will not change on a retry; anything else (timeout, 5xx, dropped connection) might. */
+function retryable(error: unknown): boolean {
+  return !/\(4\d\d\)/.test(error instanceof Error ? error.message : String(error));
+}
+
+/** Runs `fn` over `items` with at most `limit` in flight, keeping the results in order. */
+export async function mapPool<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const index = next++;
+      out[index] = await fn(items[index] as T);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, limit), items.length) }, worker));
+  return out;
+}
+
 async function askBatch(
   asker: KevAsker,
   state: CompactionState,
   batch: readonly ToolCall[],
+  retries: number,
 ): Promise<Map<string, CallAnswer>> {
   const questions: KevQuestions = Object.assign({}, ...batch.map(questionsFor));
-  const { answers } = await asker.ask(state, questions);
+  let response: Awaited<ReturnType<KevAsker['ask']>> | undefined;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      response = await asker.ask(state, questions);
+      break;
+    } catch (error) {
+      if (attempt >= retries || !retryable(error)) throw error;
+    }
+  }
+  const { answers } = response;
   return new Map(
     batch.map((call) => [
       call.id,
@@ -272,8 +315,8 @@ export async function compact(
     const state = fitState(messages, calls, resolved);
     fitted = state;
     batches = batchCalls(candidates, state.tokens, resolved);
-    const answered = await Promise.all(
-      batches.map((batch) => askBatch(asker, state.state, batch)),
+    const answered = await mapPool(batches, resolved.requestConcurrency, (batch) =>
+      askBatch(asker, state.state, batch, resolved.requestRetries),
     );
     for (const map of answered) for (const [id, answer] of map) answers.set(id, answer);
   }

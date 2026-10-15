@@ -5,6 +5,7 @@ import {
   buildKevRequest,
   collectToolCalls,
   compact,
+  mapPool,
   compactMessages,
   decideCall,
   estimateTokens,
@@ -432,5 +433,59 @@ describe('HTTP client', () => {
     ).rejects.toThrow(/KEV_API_KEY/);
     const urlless = new KevClient({ apiKey: 'k', baseUrl: '' });
     await expect(urlless.ask('s', {})).rejects.toThrow(/baseUrl/);
+  });
+});
+
+describe('request pacing', () => {
+  const noul = (answers: Record<string, unknown>) => Object.fromEntries(Object.keys(answers).map((k) => [k, { noul: 0.9 }]));
+
+  it('keeps at most requestConcurrency requests in flight and the results in order', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const out = await mapPool([1, 2, 3, 4, 5, 6], 2, async (n) => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight--;
+      return n * 10;
+    });
+    expect(out).toEqual([10, 20, 30, 40, 50, 60]);
+    expect(peak).toBe(2);
+  });
+
+  it('retries a timeout but not a 4xx answer', async () => {
+    let calls = 0;
+    const flaky: KevAsker = {
+      ask: async (_state, questions) => {
+        calls++;
+        if (calls < 3) throw new Error('aborted: no complete answer within 30000ms');
+        return { answers: noul(questions) as never };
+      },
+    };
+    const result = await compact(transcript(), flaky, { preserveRecentMessages: 1, requestRetries: 2 });
+    expect(result.stats.requests).toBeGreaterThan(0);
+    expect(calls).toBe(3);
+
+    let rejected = 0;
+    const unauthorized: KevAsker = {
+      ask: async () => {
+        rejected++;
+        throw new Error('Kev request failed (401): unauthorized');
+      },
+    };
+    await expect(compact(transcript(), unauthorized, { preserveRecentMessages: 1, requestRetries: 2 })).rejects.toThrow(/401/);
+    expect(rejected).toBe(1);
+  });
+
+  it('gives up after the retries are used', async () => {
+    let calls = 0;
+    const down: KevAsker = {
+      ask: async () => {
+        calls++;
+        throw new Error('HTTP 503');
+      },
+    };
+    await expect(compact(transcript(), down, { preserveRecentMessages: 1, requestRetries: 1 })).rejects.toThrow(/503/);
+    expect(calls).toBe(2);
   });
 });

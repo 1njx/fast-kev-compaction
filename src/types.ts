@@ -105,6 +105,10 @@ export interface CompactOptions {
   maxRequestTokens?: number;
   /** Characters of a dropped tool result to retain. Default 300. */
   truncateHeadChars?: number;
+  /** Requests in flight at once. Default 2: a big history needs many requests, and a GPU answers them one after another, so sending them all at once makes each wait past a host's per-request time limit. */
+  requestConcurrency?: number;
+  /** Extra tries for a request that fails with a timeout or server error. Default 2. */
+  requestRetries?: number;
 }
 
 export interface ResolvedCompactOptions {
@@ -114,6 +118,8 @@ export interface ResolvedCompactOptions {
   maxStateTokens: number;
   maxRequestTokens: number;
   truncateHeadChars: number;
+  requestConcurrency: number;
+  requestRetries: number;
 }
 
 export interface CompactResult {
