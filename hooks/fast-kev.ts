@@ -20,7 +20,7 @@ import type {
 } from '../src/types.js';
 
 const HOOK_DEFAULTS = {
-  compactAtPercent: 60,
+  compactAtPercent: 0, // 0 = automatic compaction is off
   minReductionRatio: 0.25,
   model: DEFAULT_MODEL,
 };
@@ -414,7 +414,7 @@ function heartbeat($: Parameters<typeof notify>[0], startedAt: number): () => vo
  * the hook that started it: a hook may run only about 10 s, a cold GPU needs minutes, and the host refuses
  * session.compact inside a command.run hook.
  */
-async function startKevCompaction($: KevEngine, configured: HookConfig): Promise<void> {
+async function startKevCompaction($: KevEngine, configured: HookConfig, automatic?: string): Promise<void> {
   if (compacting) return;
   compacting = true;
   outcome = undefined;
@@ -424,7 +424,7 @@ async function startKevCompaction($: KevEngine, configured: HookConfig): Promise
     if (!config.baseUrl) throw new Error('no Kev endpoint: set the baseUrl plugin option');
     notify(
       $,
-      'Kev compaction 1/3: waking the Kev server. A cold start takes 1 to 5 minutes, a warm one a few seconds. I will post updates.',
+      `${automatic ? `Kev compaction (automatic: ${automatic}) ` : 'Kev compaction '}1/3: waking the Kev server. A cold start takes 1 to 5 minutes, a warm one a few seconds. I will post updates.`,
     );
     const stopBeat = heartbeat($, started);
     try {
@@ -525,12 +525,12 @@ export const register: Register = (on: On, options: PluginOptions) => {
   });
 
   on('turn.complete', async ($, event: TurnCompleteInput, next) => {
-    if (compacting || Date.now() - lastAutoAt < AUTO_COOLDOWN_MS) return next(event);
+    if (configured.compactAtPercent <= 0 || compacting || Date.now() - lastAutoAt < AUTO_COOLDOWN_MS) return next(event);
     try {
       const { context } = await $.session.usage();
       if ((context.percent ?? 0) >= configured.compactAtPercent) {
         lastAutoAt = Date.now();
-        void startKevCompaction($, configured);
+        void startKevCompaction($, configured, `context is at ${Math.round(context.percent ?? 0)}%`);
       }
     } catch (error) {
       $.ui.log(

@@ -33,7 +33,7 @@ The plugin declares these `userConfig` values in `.claude-plugin/plugin.json`:
 | `model` | `kev-latest` | |
 | `keepThreshold` | `0.5` | |
 | `preserveRecentMessages` | `6` | |
-| `compactAtPercent` | `60` | Context percentage that starts an automatic compaction |
+| `compactAtPercent` | `0` (off) | Context percentage that starts an automatic compaction; 0 turns it off |
 | `minReductionRatio` | `0.25` | Below this the normal summary is used instead |
 | `maxStateTokens` | `25000` | |
 | `maxRequestTokens` | `30000` | |
@@ -50,8 +50,8 @@ the library; see [docs/LIBRARY.md](../docs/LIBRARY.md).
 - In the desktop app and headless (`claude -p`) sessions that call is unavailable, so the plugin runs the built-in
   `/compact` instead. The `session.compact` hook scores that one run with Kev (armed for 60 s, the server's idle
   shutdown). Any other manual `/compact` and every subagent compaction stay on the built-in summary.
-- The `turn.complete` hook starts the same flow when `context.percent` reaches `compactAtPercent`, with an
-  in-flight guard and a 10-minute cooldown.
+- If `compactAtPercent` is above 0, the `turn.complete` hook starts the same flow when `context.percent` reaches it,
+  with an in-flight guard and a 10-minute cooldown. The toasts say the compaction is automatic. It is off by default.
 - If Kev fails, the response is malformed, the key is missing, the history cannot be fitted into the state budget
   or the reduction is below `minReductionRatio`, the hook logs a fallback and Claude Code's built-in compaction runs.
   The outcome is shown as a toast and logged, with a per-call `decisions:` line for diagnosis.

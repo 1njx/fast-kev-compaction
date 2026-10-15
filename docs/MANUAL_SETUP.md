@@ -120,7 +120,7 @@ rm values.json
 
 (The values are single-line strings in one JSON object. If PowerShell's pipe is rejected, use Git Bash for this one command or answer the install prompts instead.) Run `claude plugin configure fast-kev-compaction@fast-kev-compaction` with no flags to see which options are set.
 
-Optional tuning: `keepThreshold` (default 0.5), `preserveRecentMessages` (6), `compactAtPercent` (60), `minReductionRatio` (0.25). See [hooks/README.md](../hooks/README.md).
+Optional tuning: `keepThreshold` (default 0.5), `preserveRecentMessages` (6), `compactAtPercent` (0, meaning automatic compaction is off), `minReductionRatio` (0.25). See [hooks/README.md](../hooks/README.md).
 
 ## Step 8: Turn on function hooks
 

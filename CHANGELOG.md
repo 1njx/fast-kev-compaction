@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1
+
+- Automatic compaction is now off by default (`compactAtPercent` 0). Before, long sessions started a Kev compaction
+  and a visible `/compact` on their own once the context passed 60%. Set `compactAtPercent` to turn it back on; its
+  toasts now say they are automatic and show the context percentage.
+
 ## 0.6.0 (Kev only)
 
 - **Breaking:** this fork now supports Kev only. The package and plugin are renamed to `fast-kev-compaction`

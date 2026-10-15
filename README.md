@@ -32,7 +32,8 @@ Or paste [docs/AGENT_PROMPT.md](docs/AGENT_PROMPT.md) into Claude, Codex or anot
 
 - `/kevcompact` wakes the server if needed and compacts with Kev. A plain `/compact` stays Claude Code's
   built-in summary, and so do subagent compactions.
-- At `compactAtPercent` (60% by default) the plugin starts the same flow on its own, at most once every 10 minutes.
+- Automatic compaction is off by default. Set `compactAtPercent` (for example 60) and the plugin starts the same flow
+  on its own when the context reaches that percentage, at most once every 10 minutes.
 - A hook can run only about 10 seconds, so very long chats may fall back to the normal summary.
 - The server sleeps 60 seconds after the last request. A cold start costs roughly $0.25 to $0.40 of GPU time, so set a
   $0 spend limit in Modal.

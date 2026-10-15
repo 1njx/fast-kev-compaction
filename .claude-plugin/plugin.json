@@ -1,6 +1,6 @@
 {
   "name": "fast-kev-compaction",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Verbatim Kev-guided compaction for Claude Code sessions.",
   "license": "MIT",
   "userConfig": {
@@ -29,9 +29,9 @@
     },
     "compactAtPercent": {
       "type": "number",
-      "title": "Compaction percentage",
-      "description": "Context percentage at which turn.complete requests compaction.",
-      "default": 60
+      "title": "Automatic compaction percentage",
+      "description": "Context percentage at which Kev compaction starts on its own. 0 (the default) turns automatic compaction off, so it only runs when you type /kevcompact.",
+      "default": 0
     },
     "minReductionRatio": {
       "type": "number",
