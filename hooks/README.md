@@ -56,6 +56,11 @@ The plugin declares these `userConfig` values in
 | `maxRequestTokens` | `30000` |
 | `truncateHeadChars` | `300` |
 | `model` | `jev-latest` |
+| `baseUrl` | TypeSafe System One |
+
+To use a Jev-compatible server such as [Kev](https://github.com/jaredpalmer/kev),
+set `baseUrl` to its full System One URL (`https://<host>/v1/systemone`),
+`model` to `kev-latest` and `apiKey` to that server's bearer key.
 
 The TypeSafe key can be supplied as the sensitive `apiKey` plugin option or
 through `TYPESAFE_API_KEY`. The environment variable is the recommended
@@ -70,9 +75,16 @@ fitted into the state budget, or the estimated reduction is below
 built-in compaction. The outcome is shown as a toast and logged with the
 reduction, per-reason counts, state size and request count; a per-call
 `decisions:` line with both probabilities is logged for diagnosis. The
-`turn.complete` hook requests
-compaction when `context.percent` reaches `compactAtPercent`, with an
-in-flight guard.
+`turn.complete` hook starts the Kev flow when `context.percent` reaches
+`compactAtPercent`, with an in-flight guard and a 10-minute cooldown.
+
+`/kevcompact` (registered at `session.start`) returns at once; a detached step
+wakes the server (`GET /v1/models`, retried), then runs the built-in `/compact`
+through `$.command.run`, because `$.session.compact` is unavailable in headless
+and desktop sessions and a hook may run only about 10 s. The `session.compact`
+hook scores that one `manual` compaction with Kev (armed for 60 s, the server's
+idle shutdown); any other manual `/compact` and every subagent compaction stay
+built-in.
 
 ## Scope and caveat
 
@@ -86,3 +98,16 @@ References:
 - [Claude Code plugins](https://code.claude.com/docs/en/plugins)
 - [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference)
 - [Claude Code hooks](https://code.claude.com/docs/en/hooks)
+
+## How `/kevcompact` runs in each client
+
+- A hook may run only about 10 s and a cold GPU needs minutes, so `/kevcompact` returns at once and a
+  detached step wakes the server first (`GET /v1/models`, retried), narrating progress with toasts.
+- In the interactive CLI the plugin then calls `$.session.compact()`, and the `session.compact` hook scores it
+  with Kev.
+- In the desktop app and headless (`claude -p`) sessions `$.session.compact()` is unavailable, so the plugin
+  runs the built-in `/compact`; the hook scores that one run with Kev (armed for 60 s, the server's idle
+  shutdown). A plain `/compact` and subagent compactions stay on the built-in summary.
+- The `compactAtPercent` auto-compact starts the same flow, at most once every 10 minutes.
+- The Kev key is the `apiKey` option (or `KEV_API_KEY`); the TypeSafe key is never sent to a custom server.
+- Each cold start costs roughly $0.25 to $0.40 of GPU time; set a $0 spend limit in Modal.

@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   compactSession,
+  getApiKey,
   decisionLog,
   decisionLogLines,
+  explainTooSmall,
+  explainWorked,
+  formatDuration,
+  friendlyError,
   resolveHookConfig,
   summarize,
+  warmUp,
   toSessionMessages,
 } from '../hooks/fast-jev.ts';
 import { applyDecisions, collectToolCalls, decideCall, type Message } from '../src/index.js';
@@ -127,6 +133,22 @@ describe('compactSession', () => {
     expect(decisionLogLines(output)).toEqual([`decisions: ${decisionLog(output)}`]);
   });
 
+  it('sends requests to the configured baseUrl, TypeSafe otherwise', async () => {
+    const urls: string[] = [];
+    const fetchFn = async (url: string, init?: { body?: string }) => {
+      urls.push(url);
+      return jevFetch(() => 0.1)(url, init);
+    };
+    const options = { preserveRecentMessages: 1, apiKey: 'k' };
+    await compactSession(transcript(), resolveHookConfig(options), fetchFn);
+    await compactSession(
+      transcript(),
+      resolveHookConfig({ ...options, baseUrl: 'https://kev.example/v1/systemone' }),
+      fetchFn,
+    );
+    expect(urls).toEqual(['https://api.typesafe.ai/v1/systemone', 'https://kev.example/v1/systemone']);
+  });
+
   it('splits a long decision log into ui.log lines under the host limit', async () => {
     const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
     const { result: output } = await compactSession(transcript(), config, jevFetch(() => 0.1));
@@ -145,5 +167,76 @@ describe('compactSession', () => {
     await expect(
       compactSession(transcript(), { ...config, apiKey: 'k' }, async () => ({ status: 500, ok: false, text: 'x' })),
     ).rejects.toThrow(/500/);
+  });
+});
+
+describe('warmUp', () => {
+  const config = { ...resolveHookConfig({ baseUrl: 'https://x.modal.run/v1/systemone' }), apiKey: 'k' };
+  const noSleep = async () => {};
+
+  it('retries /v1/models until the server answers', async () => {
+    const urls: string[] = [];
+    await warmUp(
+      async (url) => {
+        urls.push(url);
+        if (urls.length < 3) throw new Error('timeout');
+        return { status: 200, ok: true, text: '{}' };
+      },
+      config,
+      noSleep,
+    );
+    expect(urls).toEqual(Array(3).fill('https://x.modal.run/v1/models'));
+  });
+
+  it('stops at once on a rejected key and skips servers without a baseUrl', async () => {
+    await expect(warmUp(async () => ({ status: 401, ok: false, text: '' }), config, noSleep)).rejects.toThrow(/rejected/);
+    await warmUp(async () => { throw new Error('unused'); }, { ...config, baseUrl: undefined }, noSleep);
+  });
+});
+
+describe('warmUp failure and key selection', () => {
+  const config = { ...resolveHookConfig({ baseUrl: 'https://x.modal.run/v1/systemone' }), apiKey: 'k' };
+
+  it('throws when the server never answers', async () => {
+    await expect(
+      warmUp(async () => ({ status: 503, ok: false, text: '' }), config, async () => {}),
+    ).rejects.toThrow(/did not wake/);
+  });
+
+  it('never sends the TypeSafe key to a custom server', async () => {
+    const engine = {
+      env: { get: async (name: string) => (name === 'TYPESAFE_API_KEY' ? 'typesafe-secret' : undefined) },
+      settings: { read: async () => ({}) },
+    };
+    expect(await getApiKey(engine, resolveHookConfig({ baseUrl: 'https://x.modal.run/v1/systemone' }))).toBeUndefined();
+    expect(await getApiKey(engine, resolveHookConfig({}))).toBe('typesafe-secret');
+  });
+});
+
+describe('readable reports', () => {
+  it('formats durations', () => {
+    expect(formatDuration(900)).toBe('under 1 s');
+    expect(formatDuration(1400)).toBe('1 s');
+    expect(formatDuration(52_000)).toBe('52 s');
+    expect(formatDuration(125_000)).toBe('2 min 05 s');
+  });
+
+  it('explains a successful compaction in plain English', async () => {
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), apiKey: 'k' };
+    const { result } = await compactSession(transcript(), config, jevFetch(() => 0.1));
+    const text = explainWorked(result, 600);
+    expect(text).toMatch(/^It worked\. Kev kept \d+ of \d+ messages/);
+    expect(text).toMatch(/removed 2 tool calls that no longer mattered/);
+    expect(text).toMatch(/word for word/);
+    expect(text).toMatch(/took under 1 s\.$/);
+    expect(explainTooSmall(result, 0.25)).toMatch(/at least 25%.*nothing was lost/);
+  });
+
+  it('turns raw errors into what to check', () => {
+    expect(friendlyError('Jev request failed: 401 Unauthorized')).toMatch(/rejected the API key/);
+    expect(friendlyError('endpoint rejected the key (401)')).toMatch(/rejected the API key/);
+    expect(friendlyError('the Kev server did not wake up')).toMatch(/modal\.com\/apps/);
+    expect(friendlyError('HTTP 503')).toMatch(/too slow or errored/);
+    expect(friendlyError('something odd')).toBe('something odd');
   });
 });

@@ -1,5 +1,11 @@
 # fast-jev-compaction
 
+> This fork adds **Kev support**: run the scoring on your own open model
+> ([Kev](https://github.com/jaredpalmer/kev), on Modal's free tier) instead of TypeSafe's hosted Jev, with a
+> `/kevcompact` command, readable progress, and a plain-English result. It works in the Claude desktop app and
+> the Claude Code CLI. See [Use Kev instead of Jev](#use-kev-instead-of-jev). Based on
+> [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) (MIT).
+
 Claude Code plugin that replaces the compaction summary with Jev decisions:
 every tool call and result is scored in one fast request, stale ones are
 dropped or truncated, everything kept stays verbatim. Also usable as an npm
@@ -162,6 +168,28 @@ To run from a checkout without installing: `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 
 from the repository root. No publishing step is required; the marketplace is
 just the repo's `.claude-plugin/marketplace.json`.
 
+### Use Kev instead of Jev
+
+Instead of TypeSafe's hosted Jev, this fork can score with [Kev](https://github.com/jaredpalmer/kev), an open
+Jev-compatible model you host yourself on [Modal](https://modal.com). It sleeps when idle, so it costs nothing
+between compactions. It works in the **Claude desktop app** and the **Claude Code CLI**.
+
+- **Set it up for me:** paste the prompt in [docs/AGENT_PROMPT.md](docs/AGENT_PROMPT.md) into Claude, Codex or
+  another coding agent. It asks before anything that costs money or needs you to sign in.
+- **Set it up myself:** follow [docs/MANUAL_SETUP.md](docs/MANUAL_SETUP.md) (about 30 minutes, with
+  troubleshooting).
+- **Quick version:** deploy `deploy/kev_serve.py` to Modal ([deploy/README.md](deploy/README.md)), install the
+  plugin, set `baseUrl` / `apiKey` / `model`, enable function hooks, restart, then run `/kevcompact`.
+
+```sh
+claude plugin marketplace add 1njx/fast-kev-compaction
+claude plugin install fast-jev-compaction@fast-jev-compaction
+```
+
+`/kevcompact` wakes your server (1 to 5 minutes if it was asleep), compacts, and tells you in plain English what
+happened: how much was kept and dropped, or why it fell back and what to check. A plain `/compact` stays Claude
+Code's built-in summary. How it works in each client: [hooks/README.md](hooks/README.md).
+
 ## Development
 
 ```sh
@@ -189,3 +217,16 @@ demo/JevDemo/build.sh   # builds demo/JevDemo/build/JevDemo.app and launches it
 ```
 
 Press space in the app to replay from the start.
+
+## Credits
+
+- **Original project:** [fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) by
+  Tamara Tran ([@tamaratran](https://github.com/tamaratran)), released under the MIT license. The compaction
+  library, the Claude Code hooks and the Jev integration are theirs; this fork keeps their license and history.
+- **This fork** ([@1njx](https://github.com/1njx)) adds Kev support: the `baseUrl` option, `/kevcompact`, the
+  progress and result messages, CLI support, and the Modal deploy notes.
+- **Kev:** [jaredpalmer/kev](https://github.com/jaredpalmer/kev) by Jared Palmer. `deploy/kev_serve.py` is
+  copied from it with a shorter idle timeout.
+- **Jev and System One:** [TypeSafe](https://typesafe.ai).
+
+If you are the original author and want this changed or removed, open an issue.
