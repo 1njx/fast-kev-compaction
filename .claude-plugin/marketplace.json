@@ -9,7 +9,7 @@
       "name": "fast-kev-compaction",
       "source": "./",
       "description": "Verbatim Kev-guided compaction for Claude Code sessions.",
-      "version": "0.6.3",
+      "version": "0.6.4",
       "license": "MIT"
     }
   ]

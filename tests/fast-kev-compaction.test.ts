@@ -10,6 +10,7 @@ import {
   decideCall,
   estimateTokens,
   fitState,
+  goalFromMessages,
   KevClient,
   parseKevResponse,
   reductionRatio,
@@ -533,5 +534,20 @@ describe('very long histories', () => {
     expect(first?.action).toBe('keep');
     // calls that were scored with a low probability are dropped
     expect(result.decisions.some((d) => d.action === 'drop_call')).toBe(true);
+  });
+});
+
+describe('goal', () => {
+  it('uses real prompts, not slash commands or wrappers', () => {
+    const user = (text: string): Message => ({ role: 'user', text, toolUses: [] });
+    const goal = goalFromMessages([
+      user('Port the damage formula to Roblox'),
+      user('/kevcompact'),
+      user('<command-name>/kevcompact</command-name>'),
+      user('<local-command-stdout>fast-kev-compaction: Kev compaction started</local-command-stdout>'),
+      user('<system-reminder>background task finished</system-reminder>'),
+      user('keep going on the melee code'),
+    ]);
+    expect(goal).toBe('Port the damage formula to Roblox\nkeep going on the melee code');
   });
 });

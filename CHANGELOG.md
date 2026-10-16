@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.4
+
+- The long per-call "decisions" lines are no longer printed into the chat (a 948-message session printed pages of
+  them). Turn them back on with the `logDecisions` option.
+- The task goal Kev sees is now built from your last real prompts. Slash commands such as `/kevcompact` and the
+  `<local-command...>` / `<system-reminder>` wrappers were counted as prompts, so in a session that had just run
+  `/kevcompact` the goal could be junk and Kev could judge everything irrelevant.
+- The start message says "Progress messages follow" instead of "Watch the toasts" (the desktop app shows them as chat
+  lines).
+
 ## 0.6.3
 
 - Fix: a very long session no longer fails with "history too large for Kev". When even the shortened history does not

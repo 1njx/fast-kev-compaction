@@ -170,12 +170,18 @@ function historyEntries(
 }
 
 /** The last three user prompts, as the default `goal`. */
+/** Slash commands and the wrappers Claude Code adds around them are not the task. */
+function isRealPrompt(text: string): boolean {
+  const t = text.trim();
+  return t.length > 0 && !t.startsWith('/') && !/^<(local-command|command-|system-reminder|task-notification)/.test(t);
+}
+
 export function goalFromMessages(messages: readonly Message[]): string {
   return messages
     .filter(
       (message) =>
         message.role === 'user' &&
-        message.text.trim().length > 0 &&
+        isRealPrompt(message.text) &&
         (message.toolResults ?? []).length === 0,
     )
     .slice(-3)

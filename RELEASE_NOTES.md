@@ -1,13 +1,16 @@
-## 0.6.3: very long conversations work, and automatic compaction is off
+## 0.6.4: long conversations work, quieter output, automatic compaction off
 
 ### Fixes
 - **Very long conversations no longer fail.** A session with hundreds of tool calls could be too big to show Kev at once and failed with "history too large for Kev". Now the oldest calls that don't fit are left out of the scoring and stay exactly as they are, and everything newer is scored as normal. The result tells you how many old calls were left alone. Run `/kevcompact` again and more of the old part fits. Tested on a 3,003-message conversation (1,500 tool calls) against a live server: no timeouts, 61% smaller.
 - **No more timeouts on big chats.** Scoring requests used to be sent all at once, queued on the GPU and hit Claude Code's 30-second per-request limit, so Kev fell back to the normal summary. They now go out one at a time and a timed-out request is retried.
 - **Automatic compaction is off by default.** Before, a long session started a Kev compaction (and a visible `/compact`) on its own once the context passed 60%. It now only runs when you type `/kevcompact`. To turn it back on, set the `compactAtPercent` option (for example 60); its messages say they are automatic.
+- **Quieter output.** A long session used to print pages of per-call "decisions" lines into the chat. They are now off by default; turn them on with the `logDecisions` option.
+- **A better goal for Kev.** Slash commands like `/kevcompact` and Claude Code's wrapper messages were counted as your prompts, so right after running `/kevcompact` Kev could be given a junk goal and judge everything irrelevant. It now uses your last real prompts.
 - The install prompt no longer points at a README section that doesn't exist.
 
 ### New options
 - `requestConcurrency` (default 1): scoring requests in flight at once.
+- `logDecisions` (default off): print every call's keep and drop probabilities.
 
 ### Upgrading
 ```sh

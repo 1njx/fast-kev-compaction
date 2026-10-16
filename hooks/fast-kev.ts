@@ -45,6 +45,8 @@ export type HookConfig = CompactOptions & {
   /** Full URL of your Kev endpoint (https://<workspace>--kev-api.modal.run/v1/systemone). Required. */
   baseUrl?: string;
   compactAtPercent: number;
+  /** Print one line per scored call to the chat. Off by default: a long session produces pages of it. */
+  logDecisions?: boolean;
   minReductionRatio: number;
   model: string;
 };
@@ -88,6 +90,7 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
   if (apiKey) config.apiKey = apiKey;
   const baseUrl = optionString(options, 'baseUrl');
   if (baseUrl) config.baseUrl = baseUrl;
+  if (options['logDecisions'] === true) config.logDecisions = true;
   const goal = optionString(options, 'goal');
   if (goal) config.goal = goal;
   return config;
@@ -490,7 +493,7 @@ export const register: Register = (on: On, options: PluginOptions) => {
     if (compacting) return { text: 'a Kev compaction is already running' };
     void startKevCompaction($, configured);
     return {
-      text: 'Kev compaction started. Watch the toasts: 1) waking the server (seconds if warm, 1 to 5 minutes if cold), 2) server up, 3) scoring, then a plain-English result.',
+      text: 'Kev compaction started. Progress messages follow: 1) waking the server (seconds if warm, 1 to 5 minutes if cold), 2) server up, 3) scoring, then the result.',
     };
   });
 
@@ -507,7 +510,7 @@ export const register: Register = (on: On, options: PluginOptions) => {
     try {
       const config = { ...configured, apiKey: await getApiKey($, configured) };
       const { result, messages } = await compactSession(event.messages, config, hookFetch($));
-      for (const line of decisionLogLines(result)) $.ui.log(line);
+      if (config.logDecisions) for (const line of decisionLogLines(result)) $.ui.log(line);
       if (reductionRatio(result) < config.minReductionRatio) {
         outcome = { kind: 'fallback', text: explainTooSmall(result, config.minReductionRatio) };
         if (alone) notify($, `Kev compaction: ${outcome.text}`, 45_000);

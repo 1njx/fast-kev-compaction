@@ -1,6 +1,6 @@
 {
   "name": "fast-kev-compaction",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Verbatim Kev-guided compaction for Claude Code sessions.",
   "license": "MIT",
   "userConfig": {
@@ -62,6 +62,12 @@
       "title": "Requests at once",
       "description": "How many scoring requests are in flight at once. Long conversations need many requests and the GPU answers them one after another, so keep this low (default 1, the safest).",
       "default": 1
+    },
+    "logDecisions": {
+      "type": "boolean",
+      "title": "Log every decision",
+      "description": "Print one line per scored tool call to the chat (the keep and drop probabilities). Off by default because a long session produces pages of it; turn it on to see why Kev kept or dropped something.",
+      "default": false
     },
     "model": {
       "type": "string",

@@ -38,6 +38,7 @@ The plugin declares these `userConfig` values in `.claude-plugin/plugin.json`:
 | `maxStateTokens` | `25000` | |
 | `maxRequestTokens` | `30000` | |
 | `truncateHeadChars` | `300` | |
+| `logDecisions` | `false` | Print every call's keep and drop probabilities to the chat (pages of output on a long session) |
 | `requestConcurrency` | `1` | Requests in flight at once; 1 is the safest for very long chats |
 
 Every option except `apiKey`, `baseUrl`, `compactAtPercent`, `minReductionRatio` and `model` is passed straight to
