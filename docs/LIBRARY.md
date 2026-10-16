@@ -54,7 +54,7 @@ put it in a source file.
 | `maxStateTokens` | `25000` | Estimated token ceiling for the state |
 | `maxRequestTokens` | `30000` | Estimated ceiling for state plus one batch of questions |
 | `truncateHeadChars` | `300` | Characters of a dropped tool result retained before its note |
-| `requestConcurrency` | `2` | Requests in flight at once. A long history needs many requests and the GPU answers them one after another, so sending them all at once makes each wait past a per-request time limit |
+| `requestConcurrency` | `1` | Requests in flight at once. A long history needs many requests and the GPU answers them one after another, so sending them all at once makes each wait past a per-request time limit |
 | `requestRetries` | `2` | Extra tries for a request that times out or gets a server error (a 4xx answer is never retried) |
 
 `result.stats` reports message and character counts before and after, the

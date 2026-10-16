@@ -90,6 +90,8 @@ export interface FittedState {
   tokens: number;
   /** Which fitting stage produced the state, for diagnostics. */
   stage: string;
+  /** Ids of calls too far back to fit in the state. They are not scored and stay as they are. */
+  unscored?: string[];
 }
 
 export interface CompactOptions {
@@ -105,7 +107,7 @@ export interface CompactOptions {
   maxRequestTokens?: number;
   /** Characters of a dropped tool result to retain. Default 300. */
   truncateHeadChars?: number;
-  /** Requests in flight at once. Default 2: a big history needs many requests, and a GPU answers them one after another, so sending them all at once makes each wait past a host's per-request time limit. */
+  /** Requests in flight at once. Default 1: a big history needs many requests, and a GPU answers them one after another, so sending them all at once makes each wait past a host's per-request time limit. */
   requestConcurrency?: number;
   /** Extra tries for a request that fails with a timeout or server error. Default 2. */
   requestRetries?: number;
@@ -140,6 +142,8 @@ export interface CompactResult {
     /** Which fitting stage the state needed, '' when no request was made. */
     stateStage: string;
     requests: number;
+    /** Old calls that did not fit in the state, left unscored and untouched. */
+    unscored: number;
     ms: number;
   };
 }

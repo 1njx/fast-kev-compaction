@@ -317,6 +317,7 @@ export function explainWorked(result: CompactResult, scoringMs: number): string 
     `${percent(reductionRatio(result))} smaller (roughly ${freed.toLocaleString('en-US')} tokens freed). ` +
     `${dropped.length > 0 ? `It ${dropped.join(' and ')}. ` : ''}` +
     `${stats.pinned > 0 ? `${plural(stats.pinned, 'message')} (your first and the newest) were left alone. ` : ''}` +
+    `${stats.unscored > 0 ? `${plural(stats.unscored, 'tool call')} from the far past were too many to score at once and were left as they are. ` : ''}` +
     `Nothing was summarized or reworded: everything kept is word for word. Kev scoring took ${formatDuration(scoringMs)}.`
   );
 }

@@ -297,7 +297,41 @@ export function fitState(
   tokens = baseTokens + perEntry.reduce((sum, n) => sum + n, 0);
   if (fits()) return fitted(history, tokens, 'old calls merged');
 
+  // Last resort: take the oldest call lines (and then whole entries) out of the state until it fits. Calls that are no
+  // longer in the state are not scored and stay as they are, so a very long history is compacted as far as it fits
+  // instead of not at all.
+  const cut = new Set<number>();
+  for (let index = 0; index < history.length && tokens > options.maxStateTokens; index++) {
+    const entry = history[index]!;
+    if (pinned(entry)) continue;
+    const before = entryTokens(entry);
+    if (Array.isArray(entry.tool_calls) && typeof entry.tool_calls[0] === 'string') {
+      const lines = [...(entry.tool_calls as string[])];
+      while (lines.length > 0 && tokens - before + entryTokens({ ...entry, tool_calls: lines }) > options.maxStateTokens) {
+        lines.shift();
+      }
+      if (lines.length > 0 || entry.text.length > 0) {
+        entry.tool_calls = lines;
+        tokens += entryTokens(entry) - before;
+        continue;
+      }
+    }
+    cut.add(index);
+    tokens -= before;
+  }
+  if (fits()) {
+    const rest = history.filter((_, index) => !cut.has(index));
+    const seen = new Set<string>();
+    for (const entry of rest) {
+      for (const call of entry.tool_calls ?? []) {
+        seen.add(typeof call === 'string' ? (call.split(' ')[0] ?? '') : call.id);
+      }
+    }
+    const unscored = calls.filter((call) => !call.pinned && !seen.has(call.id)).map((call) => call.id);
+    return { ...fitted(rest, tokens, 'oldest entries left out'), unscored };
+  }
+
   throw new Error(
-    `history too large for Kev (~${tokens} tokens after truncation, limit ${options.maxStateTokens})`,
+    `history too large for Kev (~${tokens} tokens even with only the newest messages, limit ${options.maxStateTokens})`,
   );
 }

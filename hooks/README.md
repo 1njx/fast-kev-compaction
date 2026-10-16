@@ -38,7 +38,7 @@ The plugin declares these `userConfig` values in `.claude-plugin/plugin.json`:
 | `maxStateTokens` | `25000` | |
 | `maxRequestTokens` | `30000` | |
 | `truncateHeadChars` | `300` | |
-| `requestConcurrency` | `2` | Requests in flight at once; lower is safer for very long chats |
+| `requestConcurrency` | `1` | Requests in flight at once; 1 is the safest for very long chats |
 
 Every option except `apiKey`, `baseUrl`, `compactAtPercent`, `minReductionRatio` and `model` is passed straight to
 the library; see [docs/LIBRARY.md](../docs/LIBRARY.md).

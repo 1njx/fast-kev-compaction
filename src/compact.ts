@@ -21,7 +21,7 @@ export const DEFAULT_OPTIONS: ResolvedCompactOptions = {
   maxStateTokens: 25_000,
   maxRequestTokens: 30_000,
   truncateHeadChars: 300,
-  requestConcurrency: 2,
+  requestConcurrency: 1,
   requestRetries: 2,
 };
 
@@ -310,11 +310,18 @@ export async function compact(
 
   let fitted: { tokens: number; stage: string } = { tokens: 0, stage: '' };
   let batches: ToolCall[][] = [];
+  let unscoredCount = 0;
   const answers = new Map<string, CallAnswer>();
   if (candidates.length > 0) {
     const state = fitState(messages, calls, resolved);
     fitted = state;
-    batches = batchCalls(candidates, state.tokens, resolved);
+    const unscored = new Set(state.unscored ?? []);
+    unscoredCount = unscored.size;
+    batches = batchCalls(
+      candidates.filter((call) => !unscored.has(call.id)),
+      state.tokens,
+      resolved,
+    );
     const answered = await mapPool(batches, resolved.requestConcurrency, (batch) =>
       askBatch(asker, state.state, batch, resolved.requestRetries),
     );
@@ -346,6 +353,7 @@ export async function compact(
       stateTokens: fitted.tokens,
       stateStage: fitted.stage,
       requests: batches.length,
+      unscored: unscoredCount,
       ms: Date.now() - started,
     },
   };

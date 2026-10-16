@@ -489,3 +489,49 @@ describe('request pacing', () => {
     expect(calls).toBe(2);
   });
 });
+
+describe('very long histories', () => {
+  function longTranscript(calls: number): Message[] {
+    const out: Message[] = [{ role: 'user', text: 'Fix the failing test.', toolUses: [] }];
+    for (let i = 0; i < calls; i++) {
+      const id = `toolu_${i}`;
+      const input = { file_path: `src/module${i}.ts` };
+      out.push({ role: 'assistant', text: '', toolUses: [{ tool_use_id: id, tool: 'Read', input, text: JSON.stringify(input) }] });
+      out.push({ role: 'user', text: '', toolUses: [], toolResults: [{ tool_use_id: id, text: `contents ${i}
+`.repeat(40), isError: false }] });
+    }
+    out.push({ role: 'assistant', text: 'Fixing now.', toolUses: [] }, { role: 'user', text: 'go ahead', toolUses: [] });
+    return out;
+  }
+
+  it('leaves the oldest calls out of the state instead of failing', () => {
+    const messages = longTranscript(300);
+    const calls = collectToolCalls(messages, 4);
+    const fitted = fitState(messages, calls, { maxStateTokens: 2500, preserveRecentMessages: 4, goal: '' });
+    expect(fitted.stage).toBe('oldest entries left out');
+    expect(fitted.tokens).toBeLessThanOrEqual(2500);
+    expect(fitted.unscored!.length).toBeGreaterThan(0);
+    // the newest calls stay in the state, the oldest are the ones left out
+    expect(fitted.unscored).toContain('t1');
+    expect(fitted.unscored).not.toContain(calls[calls.length - 5]!.id);
+  });
+
+  it('asks only about calls that are in the state and leaves the rest untouched', async () => {
+    const messages = longTranscript(300);
+    const asked: string[] = [];
+    const asker: KevAsker = {
+      ask: async (_state, questions) => {
+        asked.push(...Object.keys(questions));
+        return { answers: Object.fromEntries(Object.keys(questions).map((k) => [k, { noul: 0.1 }])) as never };
+      },
+    };
+    const result = await compact(messages, asker, { preserveRecentMessages: 4, maxStateTokens: 2500, maxRequestTokens: 4000 });
+    expect(result.stats.unscored).toBeGreaterThan(0);
+    expect(asked.some((q) => q === 'call_t1' || q === 'result_t1')).toBe(false);
+    // calls that were not scored stay verbatim
+    const first = result.decisions.find((d) => d.id === 't1');
+    expect(first?.action).toBe('keep');
+    // calls that were scored with a low probability are dropped
+    expect(result.decisions.some((d) => d.action === 'drop_call')).toBe(true);
+  });
+});

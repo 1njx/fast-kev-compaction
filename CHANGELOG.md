@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.3
+
+- Fix: a very long session no longer fails with "history too large for Kev". When even the shortened history does not
+  fit the state budget, the oldest calls are taken out of the state and are not scored: they stay exactly as they are,
+  and everything newer is scored as before. The result says how many old calls were left alone. Run `/kevcompact` again
+  and, because the history is now shorter, more of the old part fits. Tested on a 3,003-message conversation (1,500
+  tool calls) against a live server: 24 requests, no timeouts, 61% smaller.
+- Requests now go out one at a time by default (`requestConcurrency` 1). The total time is about the same because the
+  GPU answers one at a time anyway, and the slowest request drops from 23 s to 16 s, further from Claude Code's 30-second
+  limit.
+
 ## 0.6.2
 
 - Fix: long conversations now work. A big history needs many scoring requests; they were all sent at once, queued
